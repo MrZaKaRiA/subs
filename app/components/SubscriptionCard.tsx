@@ -63,7 +63,7 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={`group ${className}`}
     >
-      <Card className="bg-card hover:bg-card/80 transition-all duration-200 shadow-md hover:shadow-lg relative aspect-square max-h-[280px]" data-testid="subscription-card">
+      <Card className="bg-card hover:bg-card/80 transition-all duration-200 shadow-md hover:shadow-lg relative max-h-[280px]" data-testid="subscription-card">
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2 z-10">
           <Button variant="outline" size="icon" onClick={() => onEdit(id)} className="bg-background hover:bg-muted">
             <Edit className="h-4 w-4" />
