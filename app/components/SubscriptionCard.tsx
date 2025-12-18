@@ -81,7 +81,7 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
         </div>
         <LinkPreview url={sanitizedDomain}>
           <CardContent className="flex flex-col items-center p-4 sm:p-6 h-full">
-            <div className="flex-shrink-0 pt-6">
+            <div className="flex-shrink-0">
               <img src={logoUrl} alt={`${name} logo`} className="w-16 h-16 mb-3 rounded-full shadow-md object-cover" />
             </div>
             <div className="flex flex-col items-center justify-center flex-1 min-h-0">
