@@ -80,30 +80,34 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
           </Button>
         </div>
         <LinkPreview url={sanitizedDomain}>
-          <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 h-full">
-            <img src={logoUrl} alt={`${name} logo`} className="w-16 h-16 mb-3 rounded-full shadow-md object-cover" />
-            <h3 className="text-xl sm:text-1xl font-bold mb-2 text-card-foreground max-w-full text-wrap-balance overflow-wrap-break-word line-clamp-1 text-center">
-              {name}
-            </h3>
-            <p className="text-md sm:text-sm font-semibold text-card-foreground text-center">{`${currency} ${price}`}</p>
-            {billingCycle && (
-              <Badge variant="secondary" className="mt-1 text-xs">
-                per{' '}
-                {billingCycle === 'monthly'
-                  ? 'Monthly'
-                  : billingCycle === 'yearly'
-                    ? 'Yearly'
-                    : billingCycle === 'weekly'
-                      ? 'Weekly'
-                      : 'Daily'}
-              </Badge>
-            )}
-            {nextPaymentDisplay && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                <Calendar className="h-3 w-3" />
-                <span>Next Payment: {nextPaymentDisplay}</span>
-              </div>
-            )}
+          <CardContent className="flex flex-col items-center p-4 sm:p-6 h-full">
+            <div className="flex-shrink-0 pt-6">
+              <img src={logoUrl} alt={`${name} logo`} className="w-16 h-16 mb-3 rounded-full shadow-md object-cover" />
+            </div>
+            <div className="flex flex-col items-center justify-center flex-1 min-h-0">
+              <h3 className="text-xl sm:text-1xl font-bold mb-2 text-card-foreground max-w-full text-wrap-balance overflow-wrap-break-word line-clamp-1 text-center">
+                {name}
+              </h3>
+              <p className="text-md sm:text-sm font-semibold text-card-foreground text-center">{`${currency} ${price}`}</p>
+              {billingCycle && (
+                <Badge variant="secondary" className="mt-1 text-xs">
+                  per{' '}
+                  {billingCycle === 'monthly'
+                    ? 'Monthly'
+                    : billingCycle === 'yearly'
+                      ? 'Yearly'
+                      : billingCycle === 'weekly'
+                        ? 'Weekly'
+                        : 'Daily'}
+                </Badge>
+              )}
+              {nextPaymentDisplay && (
+                <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
+                  <Calendar className="h-3 w-3" />
+                  <span>Next Payment: {nextPaymentDisplay}</span>
+                </div>
+              )}
+            </div>
           </CardContent>
         </LinkPreview>
       </Card>
