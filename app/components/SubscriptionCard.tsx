@@ -63,7 +63,30 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={`group ${className}`}
     >
-      <Card className="bg-card hover:bg-card/80 transition-all duration-200 shadow-md hover:shadow-lg relative max-h-[280px]" data-testid="subscription-card">
+      <Card className="bg-card hover:bg-card/80 transition-all duration-200 shadow-md hover:shadow-lg relative aspect-square max-h-[280px]" data-testid="subscription-card">
+        {/* Billing Cycle Badge - Top Left */}
+        {billingCycle && (
+          <Badge variant="secondary" className="absolute top-2 left-2 text-xs z-10">
+            per{' '}
+            {billingCycle === 'monthly'
+              ? 'Monthly'
+              : billingCycle === 'yearly'
+                ? 'Yearly'
+                : billingCycle === 'weekly'
+                  ? 'Weekly'
+                  : 'Daily'}
+          </Badge>
+        )}
+        
+        {/* Next Payment Date - Below Billing Cycle */}
+        {nextPaymentDisplay && (
+          <div className="absolute top-9 left-2 flex items-center gap-1 text-xs text-muted-foreground z-10">
+            <Calendar className="h-3 w-3" />
+            <span>{nextPaymentDisplay}</span>
+          </div>
+        )}
+
+        {/* Edit/Delete Buttons - Top Right */}
         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2 z-10">
           <Button variant="outline" size="icon" onClick={() => onEdit(id)} className="bg-background hover:bg-muted">
             <Edit className="h-4 w-4" />
@@ -79,6 +102,7 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
             <span className="sr-only">Delete</span>
           </Button>
         </div>
+
         <LinkPreview url={sanitizedDomain}>
           <CardContent className="flex flex-col items-center justify-center p-4 sm:p-6 h-full">
             <img src={logoUrl} alt={`${name} logo`} className="w-16 h-16 mb-3 rounded-full shadow-md object-cover" />
@@ -86,24 +110,6 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
               {name}
             </h3>
             <p className="text-md sm:text-sm font-semibold text-card-foreground text-center">{`${currency} ${price}`}</p>
-            {billingCycle && (
-              <Badge variant="secondary" className="mt-1 text-xs">
-                per{' '}
-                {billingCycle === 'monthly'
-                  ? 'Monthly'
-                  : billingCycle === 'yearly'
-                    ? 'Yearly'
-                    : billingCycle === 'weekly'
-                      ? 'Weekly'
-                      : 'Daily'}
-              </Badge>
-            )}
-            {nextPaymentDisplay && (
-              <div className="flex items-center gap-1 text-xs text-muted-foreground mt-1">
-                <Calendar className="h-3 w-3" />
-                <span>Next Payment: {nextPaymentDisplay}</span>
-              </div>
-            )}
           </CardContent>
         </LinkPreview>
       </Card>
