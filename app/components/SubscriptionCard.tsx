@@ -63,7 +63,7 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={`group ${className}`}
     >
-      <Card className="bg-card hover:bg-card/80 transition-all duration-200 shadow-md hover:shadow-lg relative aspect-square max-h-[280px]" data-testid="subscription-card">
+      <Card className="bg-card hover:bg-card/80 transition-all duration-200 shadow-md hover:shadow-lg relative max-h-[280px]" data-testid="subscription-card">
         {/* Billing Cycle Badge - Top Left */}
         {billingCycle && (
           <Badge variant="secondary" className="absolute top-2 left-2 text-xs z-10">
