@@ -95,7 +95,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "1.9.4",
-    "@playwright/test": "^1.56.1",
+    "@playwright/test": "^1.59.1",
     "@remix-run/dev": "^2.13.1",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.1",
