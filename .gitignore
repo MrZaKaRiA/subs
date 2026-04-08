@@ -52,4 +52,4 @@ yarn-error.log*
 # Db file
 db.sqlite
 
-data/config.json
+data/config.jsonpackage-lock.json

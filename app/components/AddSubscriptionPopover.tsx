@@ -20,6 +20,8 @@ import { IconUrlInput } from './IconFinder'
 
 interface AddSubscriptionPopoverProps {
   addSubscription: (subscription: Omit<Subscription, 'id'>) => void
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }
 
 const subscriptionSchema = z.object({
@@ -35,11 +37,19 @@ const subscriptionSchema = z.object({
 
 type SubscriptionFormValues = z.infer<typeof subscriptionSchema>
 
-export const AddSubscriptionPopover: React.FC<AddSubscriptionPopoverProps> = ({ addSubscription }) => {
+export const AddSubscriptionPopover: React.FC<AddSubscriptionPopoverProps> = ({
+  addSubscription,
+  open: externalOpen,
+  onOpenChange: externalOnOpenChange,
+}) => {
   const { rates } = useLoaderData<typeof loader>()
-  const [open, setOpen] = useState(false)
+  const [internalOpen, setInternalOpen] = useState(false)
   const [shouldFocus, setShouldFocus] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
+
+  // Use external control if provided, otherwise use internal state
+  const open = externalOpen !== undefined ? externalOpen : internalOpen
+  const setOpen = externalOnOpenChange !== undefined ? externalOnOpenChange : setInternalOpen
 
   const {
     register,
