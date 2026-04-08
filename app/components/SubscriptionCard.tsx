@@ -15,6 +15,13 @@ interface SubscriptionCardProps {
   className?: string
 }
 
+const billingCycleLabel: Record<string, string> = {
+  monthly: 'Monthly',
+  yearly: 'Yearly',
+  weekly: 'Weekly',
+  daily: 'Daily',
+}
+
 const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdit, onDelete, className }) => {
   const { id, name, price, currency, domain, icon, billingCycle, nextPaymentDate, showNextPayment } = subscription
 
@@ -45,13 +52,11 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
     }
 
     const date = new Date(calculatedDate)
-    const formattedDate = date.toLocaleDateString('en-US', {
+    return date.toLocaleDateString('en-US', {
       month: 'short',
       day: 'numeric',
       year: 'numeric',
     })
-
-    return formattedDate
   }
 
   const nextPaymentDisplay = getNextPaymentDisplay()
@@ -63,26 +68,24 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       className={`group ${className}`}
     >
-      <Card className="bg-card hover:bg-card/80 transition-all duration-200 shadow-md hover:shadow-lg relative max-h-[280px]" data-testid="subscription-card">
+      <Card
+        className="bg-card hover:bg-card/80 transition-all duration-200 shadow-md hover:shadow-lg relative h-[180px] overflow-hidden"
+        data-testid="subscription-card"
+      >
+        {/* Absolutely positioned overlays - do NOT affect card height */}
+
         {/* Billing Cycle Badge - Top Left */}
         {billingCycle && (
           <Badge variant="secondary" className="absolute top-2 left-2 text-xs z-10">
-            per{' '}
-            {billingCycle === 'monthly'
-              ? 'Monthly'
-              : billingCycle === 'yearly'
-                ? 'Yearly'
-                : billingCycle === 'weekly'
-                  ? 'Weekly'
-                  : 'Daily'}
+            per {billingCycleLabel[billingCycle] ?? billingCycle.charAt(0).toUpperCase() + billingCycle.slice(1)}
           </Badge>
         )}
-        
-        {/* Next Payment Date - Below Billing Cycle */}
+
+        {/* Next Payment Date - Bottom Left */}
         {nextPaymentDisplay && (
-          <div className="absolute top-9 left-2 flex items-center gap-1 text-xs text-muted-foreground z-10">
-            <Calendar className="h-3 w-3" />
-            <span>{nextPaymentDisplay}</span>
+          <div className="absolute bottom-2 left-2 flex items-center gap-1 text-xs text-muted-foreground z-10">
+            <Calendar className="h-3 w-3 shrink-0" />
+            <span>Next: {nextPaymentDisplay}</span>
           </div>
         )}
 
