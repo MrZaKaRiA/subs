@@ -1,51 +1,105 @@
-# Subs - Simplistic Open Source Subscription Cost Tracker
+# Subs
 
-Subs is a lightweight application designed to help you track and manage your subscription costs across different services. With a clean and intuitive interface, it simplifies the process of monitoring your recurring expenses.
+Open source subscription tracker built for people who want a fast, simple way to understand recurring costs.
 
-## Features
+Subs helps you log your subscriptions, view totals across currencies, and keep track of upcoming payments without sending your data to third-party services.
 
-- **Track Subscriptions**: Add, edit, and delete subscription details including name, price, and currency
-- **Automatic Favicon Fetching**: Visual identification of your subscriptions with icons from their domains
-- **Multi-Currency Support**: Track subscriptions in different currencies with automatic conversion rates
-- **Total Cost Calculation**: See your total monthly expenses at a glance
-- **Import/Export**: Easily back up your subscription data or move it between devices
-- **Client-Side Storage**: Option to store data in your browser for privacy or use SQLite for persistence
-- **Responsive Design**: Works seamlessly on both desktop and mobile devices
+## Live Demo
 
-## Demo
-
-You can try out Subs without installing anything at [subs.ajnart.fr](https://subs.ajnart.fr)
+Try it now: [subs.ajnart.fr](https://subs.ajnart.fr)
 
 ![Demo GIF](https://github.com/user-attachments/assets/ffb88333-6c4d-46c9-9ca7-49602106e5f1)
 
+## What You Can Do
+
+- Add, edit, and delete subscriptions
+- Track billing cycles (daily, weekly, monthly, yearly)
+- Show next payment date with automatic future-date calculation
+- Search, sort, and filter subscriptions
+- View totals in multiple currencies with conversion rates
+- Import and export your subscriptions as JSON
+- Use keyboard shortcuts for common actions
+- Use a responsive interface on desktop and mobile
+
 ## Tech Stack
 
-Subs is built with modern web technologies:
+- Remix + React
+- Tailwind CSS + shadcn/ui
+- Zustand for client-side state
+- Playwright for end-to-end tests
+- Biome for linting/formatting
 
-- **Framework**: Remix (React)
-- **Styling**: Tailwind CSS with Shadcn UI components
-- **State Management**: Zustand
-- **Package Manager**: Bun
+## Storage Options
 
-## 🚀 Installation
+Subs supports two persistence modes:
 
-### 🌐 Use the Online Version
+1. Browser storage
+2. Server-side JSON file storage
 
-Visit [subs.ajnart.fr](https://subs.ajnart.fr) to use the tool immediately without installation.
+The mode is controlled by `USE_LOCAL_STORAGE`.
 
-### 🐳 Run with Docker
+- `USE_LOCAL_STORAGE=true`: use browser local storage
+- `USE_LOCAL_STORAGE=false` (default): use server endpoint storage in `data/config.json`
 
-Run with a single command:
+## Quick Start
+
+### Requirements
+
+- Node.js 20+
+- npm or Bun
+
+### Install
+
+Using npm:
+
+```bash
+npm install
+```
+
+Using Bun:
+
+```bash
+bun install
+```
+
+### Run Development Server
+
+Using npm:
+
+```bash
+npm run dev
+```
+
+Using Bun:
+
+```bash
+bun run dev
+```
+
+Open [http://localhost:3000](http://localhost:3000).
+
+## Scripts
+
+- `npm run dev` - start local development server
+- `npm run build` - create production build
+- `npm run start` - run production build
+- `npm run test` - run Playwright tests
+- `npm run test:ui` - open Playwright UI mode
+- `npm run typecheck` - TypeScript type checking
+- `npm run lint` - lint with Biome
+- `npm run format` - format with Biome
+
+## Docker
+
+Run with Docker:
 
 ```bash
 docker run -p 7574:7574 -v ./data:/app/data --name subs --rm ghcr.io/ajnart/subs
 ```
 
-Then visit `http://localhost:7574` in your browser.
+Then open [http://localhost:7574](http://localhost:7574).
 
-### 📦 Using Docker Compose
-
-Create a `docker-compose.yaml` file:
+### Docker Compose
 
 ```yaml
 services:
@@ -55,33 +109,50 @@ services:
     ports:
       - "7574:7574"
     restart: unless-stopped
-    # volumes: Optional: Uncomment to use a volume to save data outside of the default docker volume
-      # - ./data:/app/data
+    volumes:
+      - ./data:/app/data
     # environment:
-      # - USE_LOCAL_STORAGE=true  # Uncomment to use browser storage instead of file storage (different config for each browser)
+    #   - USE_LOCAL_STORAGE=true
 ```
 
-Then run:
+Start it:
 
 ```bash
-docker-compose up -d
+docker compose up -d
 ```
 
-Open [http://localhost:7574](http://localhost:7574) in your browser to see the webui
+## Keyboard Shortcuts
 
-> [!NOTE]
-> Data is stored in the `/app/data` directory inside the container. Mount this directory as a volume to persist your data between container restarts.
+- `n` - open Add Subscription
+- `/` - focus Search
+- `Ctrl/Cmd + e` - export JSON
+- `Ctrl/Cmd + i` - import JSON
+- `?` - open keyboard shortcuts dialog
+- `Escape` - close open dialog/popover
 
+## Project Structure
 
+- `app/routes/_index.tsx` - main dashboard view
+- `app/components/` - UI and feature components
+- `app/store/subscriptionStore.ts` - subscription state and persistence
+- `app/utils/nextPaymentDate.ts` - billing cycle date logic
+- `tests/` - Playwright test suite
 
 ## Contributing
 
-Contributions are welcome! Feel free to open issues or submit pull requests to help improve Subs.
+Contributions are welcome.
+
+1. Fork and clone the repository.
+2. Create a feature branch.
+3. Run checks before opening a PR:
+
+```bash
+npm run typecheck
+npm run test
+```
+
+4. Open a pull request with a clear description of changes.
 
 ## License
 
-This project is open-source and available under the MIT License.
-
----
-
-Thank you for your interest in Subs! We hope it helps you keep better track of your subscription costs.
+MIT

@@ -15,7 +15,11 @@ interface Shortcut {
 
 const shortcuts: Shortcut[] = [
   { key: 'N', description: 'Add new subscription' },
+  { key: 'A', description: 'Focus Add Subscription form (first field)' },
   { key: '/', description: 'Focus search bar' },
+  { key: 'S', description: 'Cycle sort order' },
+  { key: 'F', description: 'Cycle billing cycle filter' },
+  { key: 'C', description: 'Cycle category filter' },
   { key: 'E', ctrl: true, description: 'Export subscriptions' },
   { key: 'I', ctrl: true, description: 'Import subscriptions' },
   { key: '?', description: 'Show this help dialog' },

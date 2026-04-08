@@ -1,7 +1,25 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { validateImportData } from '~/utils/importValidation'
 
 export type BillingCycle = 'monthly' | 'yearly' | 'weekly' | 'daily'
+
+export const SUBSCRIPTION_CATEGORIES = [
+  'Streaming',
+  'Music',
+  'Cloud',
+  'AI Tools',
+  'Productivity',
+  'Gaming',
+  'News & Media',
+  'Health & Fitness',
+  'Education',
+  'Finance',
+  'Developer Tools',
+  'Other',
+] as const
+
+export type SubscriptionCategory = (typeof SUBSCRIPTION_CATEGORIES)[number]
 
 export interface Subscription {
   id: string
@@ -13,15 +31,33 @@ export interface Subscription {
   billingCycle?: BillingCycle
   nextPaymentDate?: string // ISO date string
   showNextPayment?: boolean
+  category?: SubscriptionCategory
+}
+
+export interface SubscriptionTemplate {
+  label: string
+  name: string
+  domain: string
+  billingCycle: BillingCycle
+  price: number
+  currency: string
+  category?: SubscriptionCategory
+  /** ISO country name e.g. "France", "Japan" — used for regional filtering */
+  region?: string
+  /** Appears in the Popular tab in the onboarding dialog */
+  popular?: boolean
 }
 
 interface SubscriptionStore {
   subscriptions: Subscription[]
+  lastImportedAt?: string
   addSubscription: (subscription: Omit<Subscription, 'id'>) => void
   editSubscription: (id: string, updatedSubscription: Partial<Omit<Subscription, 'id'>>) => void
   deleteSubscription: (id: string) => void
+  restoreSubscription: (subscription: Subscription, index?: number) => void
   exportSubscriptions: () => string
   importSubscriptions: (data: string) => void
+  replaceSubscriptions: (subscriptions: Subscription[]) => void
   resetToDefault: () => void
 }
 
@@ -86,10 +122,13 @@ const createCustomStorage = () => {
   }
 }
 
+const customStorage = createCustomStorage()
+
 const useSubscriptionStore = create<SubscriptionStore>()(
   persist(
     (set, get) => ({
       subscriptions: defaultSubscriptions,
+      lastImportedAt: undefined,
       addSubscription: (subscription) =>
         set((state) => ({
           subscriptions: [...state.subscriptions, { ...subscription, id: crypto.randomUUID() }],
@@ -102,26 +141,37 @@ const useSubscriptionStore = create<SubscriptionStore>()(
         set((state) => ({
           subscriptions: state.subscriptions.filter((sub) => sub.id !== id),
         })),
+      restoreSubscription: (subscription, index) =>
+        set((state) => {
+          const subs = [...state.subscriptions]
+          if (index !== undefined && index >= 0 && index <= subs.length) {
+            subs.splice(index, 0, subscription)
+          } else {
+            subs.push(subscription)
+          }
+          return { subscriptions: subs }
+        }),
       exportSubscriptions: () => JSON.stringify(get().subscriptions, null, 2),
       importSubscriptions: (data) => {
         try {
-          const parsedData = JSON.parse(data)
-          if (Array.isArray(parsedData) && parsedData.every(isValidSubscription)) {
-            set({ subscriptions: parsedData })
-          } else {
+          const report = validateImportData(data)
+          if (report.invalidCount > 0) {
             throw new Error('Invalid subscription data format')
           }
+          const subscriptions = report.rows.map((r) => r.subscription as Subscription)
+          set({ subscriptions, lastImportedAt: new Date().toISOString() })
         } catch (error) {
           console.error('Failed to import subscriptions:', error)
           throw error
         }
       },
       resetToDefault: () => set({ subscriptions: defaultSubscriptions }),
+      replaceSubscriptions: (subscriptions) => set({ subscriptions }),
     }),
     {
       name: 'subscription-storage',
-      storage: createJSONStorage(() => createCustomStorage()),
-      partialize: (state) => ({ subscriptions: state.subscriptions }),
+      storage: createJSONStorage(() => customStorage),
+      partialize: (state) => ({ subscriptions: state.subscriptions, lastImportedAt: state.lastImportedAt }),
       onRehydrateStorage: () => (state) => {
         if (!state || !state.subscriptions?.length) {
           useSubscriptionStore.setState({ subscriptions: defaultSubscriptions })
@@ -130,21 +180,5 @@ const useSubscriptionStore = create<SubscriptionStore>()(
     },
   ),
 )
-
-// Type guard for subscription validation
-function isValidSubscription(sub: any): sub is Subscription {
-  return (
-    typeof sub === 'object' &&
-    typeof sub.id === 'string' &&
-    typeof sub.name === 'string' &&
-    typeof sub.price === 'number' &&
-    typeof sub.currency === 'string' &&
-    typeof sub.domain === 'string' &&
-    (sub.icon === undefined || typeof sub.icon === 'string') &&
-    (sub.billingCycle === undefined || ['monthly', 'yearly', 'weekly', 'daily'].includes(sub.billingCycle)) &&
-    (sub.nextPaymentDate === undefined || typeof sub.nextPaymentDate === 'string') &&
-    (sub.showNextPayment === undefined || typeof sub.showNextPayment === 'boolean')
-  )
-}
 
 export default useSubscriptionStore

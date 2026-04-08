@@ -1,114 +1,62 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/node'
 import { json } from '@remix-run/node'
 import { useLoaderData } from '@remix-run/react'
-import { Download, Upload } from 'lucide-react'
-import type React from 'react'
-import { useRef, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { toast } from 'sonner'
-import DeleteConfirmationDialog from '~/components/DeleteConfirmationDialog'
+import { ActionBar } from '~/components/ActionBar'
 import EditSubscriptionModal from '~/components/EditSubscriptionModal'
+import { FilterBar } from '~/components/FilterBar'
 import Header from '~/components/Header'
+import ImportDuplicateDialog from '~/components/ImportDuplicateDialog'
+import ImportValidationReportDialog from '~/components/ImportValidationReportDialog'
 import KeyboardShortcutsDialog from '~/components/KeyboardShortcutsDialog'
-import SearchBar from '~/components/SearchBar'
+import OnboardingDialog from '~/components/OnboardingDialog'
 import SubscriptionGrid from '~/components/SubscriptionGrid'
 import Summary from '~/components/Summary'
-import { Button } from '~/components/ui/button'
+import UpcomingPaymentsPanel from '~/components/UpcomingPaymentsPanel'
+import { useDeleteWithUndo } from '~/hooks/useDeleteWithUndo'
+import { useFilterState } from '~/hooks/useFilterState'
+import { useImportFlow } from '~/hooks/useImportFlow'
 import { useKeyboard } from '~/hooks/useKeyboard'
+import { useSubscriptionModal } from '~/hooks/useSubscriptionModal'
 import { getCacheHeaders, getCurrencyRates } from '~/services/currency.server'
-import useSubscriptionStore, { type Subscription } from '~/store/subscriptionStore'
-import type { SupportedCurrency } from '~/types/currencies'
+import useSubscriptionStore from '~/store/subscriptionStore'
+import { calculateTotals } from '~/utils/subscriptions'
 
-export const meta: MetaFunction = () => {
-  return [{ title: 'Subs - Subscription Tracker' }, { name: 'description', content: 'Easily track your subscriptions' }]
-}
+export const meta: MetaFunction = () => [
+  { title: 'Subs - Subscription Tracker' },
+  { name: 'description', content: 'Easily track your subscriptions' },
+]
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request: _request }: LoaderFunctionArgs) {
   const data = await getCurrencyRates()
-
-  return json(
-    {
-      rates: data?.rates ?? null,
-      lastUpdated: data?.date ?? null,
-    },
-    {
-      headers: getCacheHeaders(data?.date),
-    },
-  )
+  return json({ rates: data?.rates ?? null, lastUpdated: data?.date ?? null }, { headers: getCacheHeaders(data?.date) })
 }
 
 export default function Index() {
-  const { rates, lastUpdated } = useLoaderData<typeof loader>()
-  const [isModalOpen, setIsModalOpen] = useState(false)
-  const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null)
-  const [searchQuery, setSearchQuery] = useState('')
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
-  const [subscriptionToDelete, setSubscriptionToDelete] = useState<Subscription | null>(null)
+  const { rates } = useLoaderData<typeof loader>()
   const [isAddPopoverOpen, setIsAddPopoverOpen] = useState(false)
   const [isKeyboardShortcutsOpen, setIsKeyboardShortcutsOpen] = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isOnboardingOpen, setIsOnboardingOpen] = useState(false)
   const searchBarRef = useRef<HTMLInputElement>(null)
 
   const {
     subscriptions,
+    lastImportedAt,
     addSubscription,
     editSubscription,
     deleteSubscription,
+    restoreSubscription,
     exportSubscriptions,
-    importSubscriptions,
+    replaceSubscriptions,
   } = useSubscriptionStore()
 
-  const calculateTotalsInUSD = () => {
-    if (!rates) return {}
-    return subscriptions.reduce(
-      (acc: { [key in SupportedCurrency]?: number }, sub) => {
-        const currency = sub.currency as SupportedCurrency
-        const rate = rates[currency] || 1
-        acc[currency] = (acc[currency] || 0) + sub.price
-        return acc
-      },
-      {} as { [key in SupportedCurrency]?: number },
-    )
-  }
+  const modal = useSubscriptionModal({ subscriptions, addSubscription, editSubscription })
+  const { handleDelete } = useDeleteWithUndo({ subscriptions, deleteSubscription, restoreSubscription })
+  const importFlow = useImportFlow({ subscriptions, replaceSubscriptions })
+  const filters = useFilterState(subscriptions)
 
-  const handleEditSubscription = (id: string) => {
-    const subscription = subscriptions.find((sub) => sub.id === id)
-    if (subscription) {
-      setEditingSubscription(subscription)
-      setIsModalOpen(true)
-    }
-  }
-
-  const handleDeleteSubscription = (id: string) => {
-    const subscription = subscriptions.find((sub) => sub.id === id)
-    if (subscription) {
-      setSubscriptionToDelete(subscription)
-      setIsDeleteDialogOpen(true)
-    }
-  }
-
-  const confirmDelete = () => {
-    if (subscriptionToDelete) {
-      deleteSubscription(subscriptionToDelete.id)
-      toast.success('Subscription deleted successfully.')
-      setIsDeleteDialogOpen(false)
-      setSubscriptionToDelete(null)
-    }
-  }
-
-  const handleSaveSubscription = (subscription: Omit<Subscription, 'id'>) => {
-    try {
-      if (editingSubscription) {
-        editSubscription(editingSubscription.id, subscription)
-        toast.success(`${subscription.name} updated successfully.`)
-      } else {
-        addSubscription(subscription)
-        toast.success(`${subscription.name} added successfully.`)
-      }
-      setIsModalOpen(false)
-    } catch (error) {
-      toast.error('Failed to save subscription. Please try again.')
-    }
-  }
+  const totals = useMemo(() => calculateTotals(subscriptions, rates), [subscriptions, rates])
 
   const handleExport = async () => {
     try {
@@ -121,100 +69,28 @@ export default function Index() {
       a.click()
       URL.revokeObjectURL(url)
       toast.success(`${subscriptions.length} subscriptions exported successfully.`)
-    } catch (error) {
-      console.error('Export failed:', error)
+    } catch {
       toast.error('Failed to export subscriptions. Please try again.')
     }
   }
 
-  const handleImportClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click()
-    }
-  }
-
-  const handleImport = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
-    if (file) {
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        try {
-          const content = e.target?.result as string
-          importSubscriptions(content)
-          toast.success('Subscriptions imported successfully.')
-        } catch (error) {
-          console.error('Import failed:', error)
-          toast.error('Failed to import subscriptions. Please check the file and try again.')
-        }
-      }
-      reader.readAsText(file)
-    }
-  }
-
-  const calculateTotals = () => {
-    return subscriptions.reduce((acc: { [key: string]: number }, sub) => {
-      acc[sub.currency] = (acc[sub.currency] || 0) + sub.price
-      return acc
-    }, {})
-  }
-
-  const filteredSubscriptions = subscriptions.filter(
-    (sub) =>
-      sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.domain.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
-
-  // Keyboard shortcuts
   useKeyboard([
-    {
-      key: 'n',
-      handler: () => {
-        setIsAddPopoverOpen(true)
-      },
-      description: 'Add new subscription',
-    },
-    {
-      key: '/',
-      handler: () => {
-        searchBarRef.current?.focus()
-      },
-      description: 'Focus search bar',
-    },
-    {
-      key: 'e',
-      ctrl: true,
-      handler: () => {
-        handleExport()
-      },
-      description: 'Export subscriptions',
-    },
-    {
-      key: 'i',
-      ctrl: true,
-      handler: () => {
-        handleImportClick()
-      },
-      description: 'Import subscriptions',
-    },
-    {
-      key: '?',
-      handler: () => {
-        setIsKeyboardShortcutsOpen(true)
-      },
-      description: 'Show keyboard shortcuts',
-    },
+    { key: 'n', handler: () => setIsAddPopoverOpen(true), description: 'Add new subscription' },
+    { key: 'a', handler: () => setIsAddPopoverOpen(true), description: 'Focus Add Subscription form' },
+    { key: '/', handler: () => searchBarRef.current?.focus(), description: 'Focus search bar' },
+    { key: 'e', ctrl: true, handler: handleExport, description: 'Export subscriptions' },
+    { key: 'i', ctrl: true, handler: importFlow.triggerFileInput, description: 'Import subscriptions' },
+    { key: '?', handler: () => setIsKeyboardShortcutsOpen(true), description: 'Show keyboard shortcuts' },
+    { key: 's', handler: filters.cycleSortOption, description: 'Cycle sort order' },
+    { key: 'f', handler: filters.cycleBillingFilter, description: 'Cycle billing cycle filter' },
+    { key: 'c', handler: filters.cycleCategoryFilter, description: 'Cycle category filter' },
     {
       key: 'Escape',
       handler: () => {
-        if (isModalOpen) {
-          setIsModalOpen(false)
-        } else if (isDeleteDialogOpen) {
-          setIsDeleteDialogOpen(false)
-        } else if (isAddPopoverOpen) {
-          setIsAddPopoverOpen(false)
-        } else if (isKeyboardShortcutsOpen) {
-          setIsKeyboardShortcutsOpen(false)
-        }
+        if (modal.isOpen) modal.close()
+        else if (importFlow.importDuplicates.length > 0) importFlow.clearDuplicateState()
+        else if (isAddPopoverOpen) setIsAddPopoverOpen(false)
+        else if (isKeyboardShortcutsOpen) setIsKeyboardShortcutsOpen(false)
       },
       description: 'Close dialogs',
     },
@@ -224,55 +100,70 @@ export default function Index() {
     <div className="min-h-screen bg-background">
       <Header addPopoverOpen={isAddPopoverOpen} onAddPopoverOpenChange={setIsAddPopoverOpen} />
       <main className="container mx-auto py-6 px-3 sm:px-4 lg:px-6">
-        <div className="mb-6 flex flex-col sm:flex-row justify-between items-center">
-          <div>
-            <h2 className="text-xl font-bold text-foreground mb-1">Manage {subscriptions.length} Subscriptions</h2>
-          </div>
-          <div className="flex">
-            <Button
-              onClick={handleExport}
-              size="sm"
-              variant="outline"
-              className="rounded-none rounded-tl-md rounded-bl-md "
-            >
-              <Download className="mr-1 h-3 w-3" />
-              Export
-            </Button>
-            <Button
-              onClick={handleImportClick}
-              size="sm"
-              variant="outline"
-              className="rounded-none rounded-tr-md rounded-br-md "
-            >
-              <Upload className="mr-1 h-3 w-3" />
-              Import
-            </Button>
-            <input ref={fileInputRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
-          </div>
-        </div>
-        <Summary totals={calculateTotalsInUSD()} />
-        <div className="mb-4">
-          <SearchBar ref={searchBarRef} onSearch={setSearchQuery} />
-        </div>
+        <ActionBar
+          subscriptionCount={subscriptions.length}
+          lastImportedAt={lastImportedAt}
+          onExport={handleExport}
+          onImport={importFlow.triggerFileInput}
+          onQuickSetup={() => setIsOnboardingOpen(true)}
+          fileInputRef={importFlow.fileInputRef}
+          onFileChange={importFlow.handleFileChange}
+        />
+        <Summary totals={totals} />
+        <UpcomingPaymentsPanel
+          subscriptions={subscriptions}
+          rates={rates}
+          onMarkPaid={(id, nextDate) => editSubscription(id, { nextPaymentDate: nextDate })}
+        />
+        <FilterBar
+          searchBarRef={searchBarRef}
+          searchQuery={filters.searchQuery}
+          onSearch={filters.setSearchQuery}
+          sortBy={filters.sortBy}
+          onSortChange={filters.setSortBy}
+          billingCycleFilter={filters.billingCycleFilter}
+          onBillingCycleChange={filters.setBillingCycleFilter}
+          categoryFilter={filters.categoryFilter}
+          onCategoryChange={filters.setCategoryFilter}
+          filteredCount={filters.filteredSubscriptions.length}
+          totalCount={subscriptions.length}
+          hasActiveFilters={filters.hasActiveFilters}
+          onClearFilters={filters.clearFilters}
+        />
         <SubscriptionGrid
-          subscriptions={filteredSubscriptions}
-          onEditSubscription={handleEditSubscription}
-          onDeleteSubscription={handleDeleteSubscription}
+          subscriptions={filters.filteredSubscriptions}
+          onEditSubscription={modal.openEdit}
+          onDeleteSubscription={handleDelete}
+          searchQuery={filters.searchQuery}
+          onClearSearch={() => filters.setSearchQuery('')}
+          onAddSubscription={() => setIsAddPopoverOpen(true)}
+          onAddWithTemplate={modal.openWithTemplate}
+          onQuickSetup={() => setIsOnboardingOpen(true)}
+          totalCount={subscriptions.length}
         />
       </main>
+
       <EditSubscriptionModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSave={handleSaveSubscription}
-        editingSubscription={editingSubscription}
+        isOpen={modal.isOpen}
+        onClose={modal.close}
+        onSave={modal.save}
+        editingSubscription={modal.editingSubscription}
+        templateValues={modal.pendingTemplate}
       />
-      <DeleteConfirmationDialog
-        isOpen={isDeleteDialogOpen}
-        onClose={() => setIsDeleteDialogOpen(false)}
-        onConfirm={confirmDelete}
-        subscriptionName={subscriptionToDelete?.name || ''}
+      <ImportDuplicateDialog
+        isOpen={importFlow.importDuplicates.length > 0}
+        onClose={importFlow.clearDuplicateState}
+        duplicates={importFlow.importDuplicates}
+        onResolve={importFlow.resolveDuplicates}
       />
       <KeyboardShortcutsDialog isOpen={isKeyboardShortcutsOpen} onClose={() => setIsKeyboardShortcutsOpen(false)} />
+      <OnboardingDialog open={isOnboardingOpen} onOpenChange={setIsOnboardingOpen} addSubscription={addSubscription} />
+      <ImportValidationReportDialog
+        isOpen={importFlow.isReportOpen}
+        report={importFlow.importReport}
+        onClose={importFlow.closeReport}
+        onImportValid={importFlow.importValidRows}
+      />
     </div>
   )
 }

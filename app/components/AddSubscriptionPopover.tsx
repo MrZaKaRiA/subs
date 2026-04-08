@@ -12,11 +12,29 @@ import { useEffect, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { toast } from 'sonner'
 import { z } from 'zod'
+import { POPULAR_TEMPLATES } from '~/lib/templates'
 import { cn } from '~/lib/utils'
 import type { loader } from '~/routes/_index'
-import type { BillingCycle, Subscription } from '~/store/subscriptionStore'
+import { usePreferencesStore } from '~/store/preferences'
+import { type BillingCycle, SUBSCRIPTION_CATEGORIES, type Subscription } from '~/store/subscriptionStore'
 import { initializeNextPaymentDate } from '~/utils/nextPaymentDate'
 import { IconUrlInput } from './IconFinder'
+
+function getCurrencySymbol(currency: string): string {
+  try {
+    return new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })
+      .format(0)
+      .replace(/[\d,. ]/g, '')
+      .trim()
+  } catch {
+    return currency
+  }
+}
 
 interface AddSubscriptionPopoverProps {
   addSubscription: (subscription: Omit<Subscription, 'id'>) => void
@@ -33,6 +51,7 @@ const subscriptionSchema = z.object({
   billingCycle: z.enum(['monthly', 'yearly', 'weekly', 'daily']).optional(),
   nextPaymentDate: z.string().optional(),
   showNextPayment: z.boolean().optional(),
+  category: z.string().optional(),
 })
 
 type SubscriptionFormValues = z.infer<typeof subscriptionSchema>
@@ -43,6 +62,7 @@ export const AddSubscriptionPopover: React.FC<AddSubscriptionPopoverProps> = ({
   onOpenChange: externalOnOpenChange,
 }) => {
   const { rates } = useLoaderData<typeof loader>()
+  const { selectedCurrency } = usePreferencesStore()
   const [internalOpen, setInternalOpen] = useState(false)
   const [shouldFocus, setShouldFocus] = useState(false)
   const [calendarOpen, setCalendarOpen] = useState(false)
@@ -71,6 +91,7 @@ export const AddSubscriptionPopover: React.FC<AddSubscriptionPopoverProps> = ({
       billingCycle: undefined,
       nextPaymentDate: undefined,
       showNextPayment: false,
+      category: undefined,
     },
   })
 
@@ -78,6 +99,9 @@ export const AddSubscriptionPopover: React.FC<AddSubscriptionPopoverProps> = ({
   const billingCycleValue = watch('billingCycle')
   const showNextPaymentValue = watch('showNextPayment')
   const nextPaymentDateValue = watch('nextPaymentDate')
+  const priceValue = watch('price')
+  const currencyValue = watch('currency')
+  const categoryValue = watch('category')
 
   useEffect(() => {
     if (shouldFocus) {
@@ -130,7 +154,33 @@ export const AddSubscriptionPopover: React.FC<AddSubscriptionPopoverProps> = ({
       </PopoverTrigger>
       <PopoverContent className="w-80 max-h-[80vh] overflow-y-auto">
         <form onSubmit={handleSubmit(onSubmit)}>
-          <h3 className="font-medium text-lg mb-4">Add Subscription</h3>
+          <h3 className="font-medium text-lg mb-3">Add Subscription</h3>
+          <div className="mb-4">
+            <p className="text-xs text-muted-foreground mb-2">Quick templates</p>
+            <div className="flex flex-wrap gap-1.5">
+              {POPULAR_TEMPLATES.map((template) => (
+                <button
+                  key={template.label}
+                  type="button"
+                  onClick={() => {
+                    reset({
+                      name: template.name,
+                      price: template.price,
+                      currency: template.currency,
+                      domain: template.domain,
+                      billingCycle: template.billingCycle,
+                      category: template.category,
+                      icon: '',
+                      showNextPayment: false,
+                    })
+                  }}
+                  className="text-xs px-2 py-0.5 rounded-full border border-border bg-muted/50 hover:bg-muted text-foreground transition-colors"
+                >
+                  {template.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="space-y-4">
             <div>
               <IconUrlInput
@@ -148,14 +198,30 @@ export const AddSubscriptionPopover: React.FC<AddSubscriptionPopoverProps> = ({
             <div className="flex items-start space-x-2">
               <div className="flex-1">
                 <Label htmlFor="price">Price</Label>
-                <Input
-                  id="price"
-                  type="number"
-                  {...register('price', {
-                    valueAsNumber: true,
-                  })}
-                  className={errors.price ? 'border-red-500' : ''}
-                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground select-none">
+                    {getCurrencySymbol(currencyValue || 'USD')}
+                  </span>
+                  <Input
+                    id="price"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    {...register('price', { valueAsNumber: true })}
+                    className={cn('pl-7', errors.price ? 'border-red-500' : '')}
+                  />
+                </div>
+                {(priceValue ?? 0) > 0 &&
+                  currencyValue &&
+                  rates &&
+                  selectedCurrency &&
+                  selectedCurrency !== currencyValue && (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      ≈{' '}
+                      {(((priceValue ?? 0) * (rates[currencyValue] ?? 1)) / (rates[selectedCurrency] ?? 1)).toFixed(2)}{' '}
+                      {selectedCurrency}
+                    </p>
+                  )}
                 <p className="text-red-500 text-xs h-4">{errors.price?.message}</p>
               </div>
               <div className="flex-1">
@@ -248,6 +314,27 @@ export const AddSubscriptionPopover: React.FC<AddSubscriptionPopoverProps> = ({
                 )}
               </>
             )}
+            <div>
+              <Label htmlFor="category">Category (optional)</Label>
+              <Controller
+                name="category"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                    <SelectTrigger id="category">
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SUBSCRIPTION_CATEGORIES.map((cat) => (
+                        <SelectItem key={cat} value={cat}>
+                          {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
           </div>
           <div className="flex justify-end mt-4">
             <Button type="submit" className="contain-content">
