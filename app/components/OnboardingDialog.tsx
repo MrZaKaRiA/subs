@@ -1,5 +1,5 @@
 import { Check, Search, Sparkles, X } from 'lucide-react'
-import { useMemo, useRef, useState } from 'react'
+import { memo, useMemo, useRef, useState } from 'react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog'
@@ -18,6 +18,17 @@ const TEMPLATE_CATEGORIES = Array.from(
   new Set(ALL_TEMPLATES.map((t) => t.category).filter(Boolean)),
 ) as SubscriptionCategory[]
 
+const CATEGORY_TABS: Array<{ id: string; label: string }> = [
+  { id: 'Popular', label: '⭐ Popular' },
+  { id: 'All', label: 'All' },
+  ...TEMPLATE_CATEGORIES.map((c) => ({ id: c, label: c })),
+]
+
+const REGION_TABS: Array<{ id: string; label: string }> = TEMPLATE_REGIONS.map((r) => ({
+  id: `region:${r}`,
+  label: `${REGION_FLAGS[r] ?? ''} ${r}`,
+}))
+
 function getFaviconUrl(domain: string) {
   try {
     const url = new URL(domain)
@@ -27,7 +38,7 @@ function getFaviconUrl(domain: string) {
   }
 }
 
-function TemplateCard({
+const TemplateCard = memo(function TemplateCard({
   template,
   selected,
   onToggle,
@@ -97,7 +108,7 @@ function TemplateCard({
       ) : null}
     </button>
   )
-}
+})
 
 export default function OnboardingDialog({ open, onOpenChange, addSubscription }: OnboardingDialogProps) {
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -171,17 +182,6 @@ export default function OnboardingDialog({ open, onOpenChange, addSubscription }
 
   const allVisibleSelected = filtered.length > 0 && filtered.every((t) => selected.has(t.label))
 
-  const categoryTabs: Array<{ id: string; label: string }> = [
-    { id: 'Popular', label: '⭐ Popular' },
-    { id: 'All', label: 'All' },
-    ...TEMPLATE_CATEGORIES.map((c) => ({ id: c, label: c })),
-  ]
-
-  const regionTabs: Array<{ id: string; label: string }> = TEMPLATE_REGIONS.map((r) => ({
-    id: `region:${r}`,
-    label: `${REGION_FLAGS[r] ?? ''} ${r}`,
-  }))
-
   return (
     <Dialog
       open={open}
@@ -232,7 +232,7 @@ export default function OnboardingDialog({ open, onOpenChange, addSubscription }
         <div className="shrink-0 border-b">
           {/* Category row */}
           <div className="flex flex-wrap gap-1.5 px-6 pt-3 pb-2">
-            {categoryTabs.map((tab) => (
+            {CATEGORY_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"
@@ -252,7 +252,7 @@ export default function OnboardingDialog({ open, onOpenChange, addSubscription }
           </div>
           {/* Country row */}
           <div className="flex flex-wrap gap-1.5 px-6 pb-3">
-            {regionTabs.map((tab) => (
+            {REGION_TABS.map((tab) => (
               <button
                 key={tab.id}
                 type="button"

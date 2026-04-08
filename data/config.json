@@ -71,6 +71,16 @@
           "price": 6.99,
           "currency": "EUR",
           "domain": "https://microsoft.com"
+        },
+        {
+          "name": "My Productivity App",
+          "price": 12,
+          "currency": "USD",
+          "icon": "",
+          "domain": "https://productivity.com",
+          "showNextPayment": false,
+          "category": "Productivity",
+          "id": "70cb7c7b-c302-417f-8729-42b6f6f93902"
         }
       ]
     },

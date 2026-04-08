@@ -2,10 +2,10 @@ import { useQuery } from '@tanstack/react-query'
 import { Loader2, Search } from 'lucide-react'
 import * as React from 'react'
 
-import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
+import { Button } from '~/components/ui/button'
+import { Dialog, DialogContent, DialogTitle } from '~/components/ui/dialog'
+import { Input } from '~/components/ui/input'
+import { Label } from '~/components/ui/label'
 
 type Icon = {
   value: string

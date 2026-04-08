@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import { createJSONStorage, persist } from 'zustand/middleware'
+import { validateImportData } from '~/utils/importValidation'
 
 export type BillingCycle = 'monthly' | 'yearly' | 'weekly' | 'daily'
 
@@ -121,6 +122,8 @@ const createCustomStorage = () => {
   }
 }
 
+const customStorage = createCustomStorage()
+
 const useSubscriptionStore = create<SubscriptionStore>()(
   persist(
     (set, get) => ({
@@ -151,12 +154,12 @@ const useSubscriptionStore = create<SubscriptionStore>()(
       exportSubscriptions: () => JSON.stringify(get().subscriptions, null, 2),
       importSubscriptions: (data) => {
         try {
-          const parsedData = JSON.parse(data)
-          if (Array.isArray(parsedData) && parsedData.every(isValidSubscription)) {
-            set({ subscriptions: parsedData, lastImportedAt: new Date().toISOString() })
-          } else {
+          const report = validateImportData(data)
+          if (report.invalidCount > 0) {
             throw new Error('Invalid subscription data format')
           }
+          const subscriptions = report.rows.map((r) => r.subscription as Subscription)
+          set({ subscriptions, lastImportedAt: new Date().toISOString() })
         } catch (error) {
           console.error('Failed to import subscriptions:', error)
           throw error
@@ -167,7 +170,7 @@ const useSubscriptionStore = create<SubscriptionStore>()(
     }),
     {
       name: 'subscription-storage',
-      storage: createJSONStorage(() => createCustomStorage()),
+      storage: createJSONStorage(() => customStorage),
       partialize: (state) => ({ subscriptions: state.subscriptions, lastImportedAt: state.lastImportedAt }),
       onRehydrateStorage: () => (state) => {
         if (!state || !state.subscriptions?.length) {
@@ -177,22 +180,5 @@ const useSubscriptionStore = create<SubscriptionStore>()(
     },
   ),
 )
-
-// Type guard for subscription validation
-function isValidSubscription(sub: any): sub is Subscription {
-  return (
-    typeof sub === 'object' &&
-    typeof sub.id === 'string' &&
-    typeof sub.name === 'string' &&
-    typeof sub.price === 'number' &&
-    typeof sub.currency === 'string' &&
-    typeof sub.domain === 'string' &&
-    (sub.icon === undefined || typeof sub.icon === 'string') &&
-    (sub.billingCycle === undefined || ['monthly', 'yearly', 'weekly', 'daily'].includes(sub.billingCycle)) &&
-    (sub.nextPaymentDate === undefined || typeof sub.nextPaymentDate === 'string') &&
-    (sub.showNextPayment === undefined || typeof sub.showNextPayment === 'boolean') &&
-    (sub.category === undefined || SUBSCRIPTION_CATEGORIES.includes(sub.category))
-  )
-}
 
 export default useSubscriptionStore

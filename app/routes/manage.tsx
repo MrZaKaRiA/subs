@@ -2,7 +2,7 @@ import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/node'
 import { json } from '@remix-run/node'
 import { Link, useLoaderData } from '@remix-run/react'
 import { ArrowLeft, CalendarIcon, CheckCircle2, RotateCcw, Save } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 import { toast } from 'sonner'
 import { IconUrlInput } from '~/components/IconFinder'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '~/components/ui/accordion'
@@ -14,7 +14,7 @@ import { Label } from '~/components/ui/label'
 import { Popover, PopoverContent, PopoverTrigger } from '~/components/ui/popover'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { Switch } from '~/components/ui/switch'
-import { cn } from '~/lib/utils'
+import { cn, formatDateForDisplay, getCurrencySymbol, sanitizeDomain } from '~/lib/utils'
 import { getCacheHeaders, getCurrencyRates } from '~/services/currency.server'
 import useSubscriptionStore, {
   SUBSCRIPTION_CATEGORIES,
@@ -34,28 +34,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
   return json({ rates: data?.rates ?? null, lastUpdated: data?.date ?? null }, { headers: getCacheHeaders(data?.date) })
 }
 
-function getCurrencySymbol(currency: string): string {
-  try {
-    return new Intl.NumberFormat('en', {
-      style: 'currency',
-      currency,
-      minimumFractionDigits: 0,
-      maximumFractionDigits: 0,
-    })
-      .format(0)
-      .replace(/[\d,. ]/g, '')
-      .trim()
-  } catch {
-    return currency
-  }
-}
-
-function formatDateForDisplay(dateString: string | undefined): string {
-  if (!dateString) return 'Pick a date'
-  const date = new Date(dateString)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-}
-
 interface SubscriptionRowProps {
   draft: Subscription
   original: Subscription
@@ -65,20 +43,15 @@ interface SubscriptionRowProps {
   onDiscard: () => void
 }
 
-function SubscriptionRow({ draft, original, isDirty, rates, onChange, onDiscard }: SubscriptionRowProps) {
+const SubscriptionRow = memo(function SubscriptionRow({
+  draft,
+  original,
+  isDirty,
+  rates,
+  onChange,
+  onDiscard,
+}: SubscriptionRowProps) {
   const [calendarOpen, setCalendarOpen] = useState(false)
-
-  const sanitizeDomain = (domain: string) => {
-    try {
-      return new URL(domain).href
-    } catch {
-      try {
-        return new URL(`https://${domain}`).href
-      } catch {
-        return 'https://example.com'
-      }
-    }
-  }
 
   const logoUrl =
     draft.icon ||
@@ -294,7 +267,7 @@ function SubscriptionRow({ draft, original, isDirty, rates, onChange, onDiscard 
       </AccordionContent>
     </AccordionItem>
   )
-}
+})
 
 export default function Manage() {
   const { rates } = useLoaderData<typeof loader>()
@@ -327,7 +300,20 @@ export default function Manage() {
   const isDirty = (id: string) => {
     const original = subscriptions.find((s) => s.id === id)
     if (!original) return false
-    return JSON.stringify(drafts[id]) !== JSON.stringify(original)
+    const draft = drafts[id]
+    if (!draft) return false
+    const keys: (keyof Subscription)[] = [
+      'name',
+      'price',
+      'currency',
+      'domain',
+      'icon',
+      'billingCycle',
+      'nextPaymentDate',
+      'showNextPayment',
+      'category',
+    ]
+    return keys.some((k) => draft[k] !== original[k])
   }
 
   const dirtyCount = subscriptions.filter((s) => isDirty(s.id)).length

@@ -1,5 +1,4 @@
 import { type ClassValue, clsx } from 'clsx'
-import { useEffect, useState } from 'react'
 import { twMerge } from 'tailwind-merge'
 import type { BillingCycle } from '~/store/subscriptionStore'
 
@@ -29,19 +28,45 @@ export function convertCurrency(
   return (amount / fromRate) * toRate
 }
 
-export function useMediaQuery(query: string): boolean {
-  const [matches, setMatches] = useState(false)
+/** Returns the currency symbol for a given ISO 4217 currency code. */
+export function getCurrencySymbol(currency: string): string {
+  try {
+    return new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })
+      .format(0)
+      .replace(/[\d,. ]/g, '')
+      .trim()
+  } catch {
+    return currency
+  }
+}
 
-  useEffect(() => {
-    const mediaQuery = window.matchMedia(query)
+/** Formats an ISO date string for display (e.g. "Jan 1, 2025"). */
+export function formatDateForDisplay(dateString: string | undefined): string {
+  if (!dateString) return 'Pick a date'
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+}
 
-    setMatches(mediaQuery.matches)
-
-    const handler = (event: MediaQueryListEvent) => setMatches(event.matches)
-
-    mediaQuery.addEventListener('change', handler)
-    return () => mediaQuery.removeEventListener('change', handler)
-  }, [query])
-
-  return matches
+/**
+ * Sanitizes a raw domain string into a valid absolute URL.
+ * Falls back to `https://example.com` if the input is unparseable.
+ */
+export function sanitizeDomain(domain: string): string {
+  try {
+    return new URL(domain).href
+  } catch {
+    try {
+      return new URL(`https://${domain}`).href
+    } catch {
+      return 'https://example.com'
+    }
+  }
 }

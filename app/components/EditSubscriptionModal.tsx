@@ -15,13 +15,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~
 import { Switch } from '~/components/ui/switch'
 import { cn } from '~/lib/utils'
 import type { loader } from '~/routes/_index'
+import { usePreferencesStore } from '~/store/preferences'
 import {
   type BillingCycle,
   SUBSCRIPTION_CATEGORIES,
   type Subscription,
   type SubscriptionTemplate,
 } from '~/store/subscriptionStore'
-import { usePreferencesStore } from '~/stores/preferences'
 import { initializeNextPaymentDate } from '~/utils/nextPaymentDate'
 import { IconUrlInput } from './IconFinder'
 import SubscriptionCard from './SubscriptionCard'

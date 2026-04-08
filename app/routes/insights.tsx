@@ -11,8 +11,8 @@ import { type ChartConfig, ChartContainer, ChartTooltip, ChartTooltipContent } f
 import { Progress } from '~/components/ui/progress'
 import { MONTHLY_MULTIPLIER, convertCurrency } from '~/lib/utils'
 import { getCacheHeaders, getCurrencyRates } from '~/services/currency.server'
+import { usePreferencesStore } from '~/store/preferences'
 import useSubscriptionStore, { type BillingCycle } from '~/store/subscriptionStore'
-import { usePreferencesStore } from '~/stores/preferences'
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Insights – Subs' }, { name: 'description', content: 'Spending insights for your subscriptions' }]

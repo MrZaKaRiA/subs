@@ -6,7 +6,7 @@ import { Checkbox } from '~/components/ui/checkbox'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '~/components/ui/dialog'
 import { Label } from '~/components/ui/label'
 import { Switch } from '~/components/ui/switch'
-import { type NotificationLeadTime, usePreferencesStore } from '~/stores/preferences'
+import { type NotificationLeadTime, usePreferencesStore } from '~/store/preferences'
 
 const LEAD_TIME_OPTIONS: { value: NotificationLeadTime; label: string }[] = [
   { value: 1, label: '1 day before' },

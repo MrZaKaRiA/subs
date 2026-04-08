@@ -12,7 +12,7 @@ import { Progress } from '~/components/ui/progress'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { convertCurrency } from '~/lib/utils'
 import type { loader } from '~/routes/_index'
-import { usePreferencesStore } from '~/stores/preferences'
+import { usePreferencesStore } from '~/store/preferences'
 
 interface SummaryProps {
   totals: { [key: string]: number }

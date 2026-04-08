@@ -1,11 +1,12 @@
 import { motion } from 'framer-motion'
 import { AlertTriangle, Calendar, Edit, Trash2 } from 'lucide-react'
-import type React from 'react'
+import { memo } from 'react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { LinkPreview } from '~/components/ui/link-preview'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '~/components/ui/tooltip'
+import { sanitizeDomain } from '~/lib/utils'
 import type { Subscription } from '~/store/subscriptionStore'
 import { calculateNextPaymentDate } from '~/utils/nextPaymentDate'
 
@@ -31,7 +32,12 @@ const getDaysUntil = (dateString: string): number => {
   return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
 }
 
-const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdit, onDelete, className }) => {
+const SubscriptionCard = memo(function SubscriptionCard({
+  subscription,
+  onEdit,
+  onDelete,
+  className,
+}: SubscriptionCardProps) {
   const { id, name, price, currency, domain, icon, billingCycle, nextPaymentDate, showNextPayment, category } =
     subscription
 
@@ -43,21 +49,13 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
     showNextPayment && nextPaymentDate ? new Date(nextPaymentDate) < new Date(new Date().setHours(0, 0, 0, 0)) : false
 
   // Sanitize the domain URL
-  const sanitizeDomain = (domain: string) => {
-    try {
-      return new URL(domain).href
-    } catch {
-      return new URL(`https://${domain}`).href
-    }
-  }
-
   const sanitizedDomain = sanitizeDomain(domain)
   const defaultLogoUrl = `https://www.google.com/s2/favicons?domain=${sanitizedDomain}&sz=64`
 
   // Use custom icon if available, otherwise fall back to domain favicon
   const logoUrl = icon || defaultLogoUrl
 
-  // Calculate and format next payment date
+  // Calculate and format next payment date (single call reused for both display and relative label)
   const getNextPaymentDisplay = () => {
     if (!showNextPayment || !billingCycle) {
       return null
@@ -69,15 +67,15 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
     }
 
     const date = new Date(calculatedDate)
-    return date.toLocaleDateString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    })
+    return {
+      formatted: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
+      calculatedDate,
+    }
   }
 
-  const nextPaymentDisplay = getNextPaymentDisplay()
-  const nextPaymentDateValue = billingCycle ? calculateNextPaymentDate(billingCycle, nextPaymentDate) : undefined
+  const paymentInfo = getNextPaymentDisplay()
+  const nextPaymentDisplay = paymentInfo?.formatted ?? null
+  const nextPaymentDateValue = paymentInfo?.calculatedDate
   const daysUntilPayment = nextPaymentDateValue ? getDaysUntil(nextPaymentDateValue) : undefined
   const relativeNextPaymentLabel =
     daysUntilPayment === undefined
@@ -171,6 +169,6 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
       </Card>
     </motion.div>
   )
-}
+})
 
 export default SubscriptionCard

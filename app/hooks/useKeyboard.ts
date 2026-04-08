@@ -52,19 +52,17 @@ export function useKeyboard(bindings: KeyBinding[], enabled = true) {
 }
 
 /**
- * Hook to get all available keyboard shortcuts
+ * All available keyboard shortcuts (static metadata — no React features needed).
  */
-export function useKeyboardShortcuts() {
-  return [
-    { key: 'n', description: 'Add new subscription' },
-    { key: 'a', description: 'Focus Add Subscription form (first field)' },
-    { key: '/', description: 'Focus search bar' },
-    { key: 's', description: 'Cycle sort order' },
-    { key: 'f', description: 'Cycle billing cycle filter' },
-    { key: 'c', description: 'Cycle category filter' },
-    { key: 'e', description: 'Export subscriptions', ctrl: true },
-    { key: 'i', description: 'Import subscriptions', ctrl: true },
-    { key: '?', description: 'Show keyboard shortcuts' },
-    { key: 'Escape', description: 'Close dialogs/modals' },
-  ]
-}
+export const KEYBOARD_SHORTCUTS = [
+  { key: 'n', description: 'Add new subscription' },
+  { key: 'a', description: 'Focus Add Subscription form (first field)' },
+  { key: '/', description: 'Focus search bar' },
+  { key: 's', description: 'Cycle sort order' },
+  { key: 'f', description: 'Cycle billing cycle filter' },
+  { key: 'c', description: 'Cycle category filter' },
+  { key: 'e', description: 'Export subscriptions', ctrl: true },
+  { key: 'i', description: 'Import subscriptions', ctrl: true },
+  { key: '?', description: 'Show keyboard shortcuts' },
+  { key: 'Escape', description: 'Close dialogs/modals' },
+] as const
