@@ -55,7 +55,10 @@
           "name": "Apple Music",
           "price": 9.99,
           "currency": "JPY",
-          "domain": "https://apple.com/apple-music"
+          "domain": "https://apple.com/apple-music",
+          "billingCycle": "monthly",
+          "nextPaymentDate": "2026-05-10",
+          "showNextPayment": true
         },
         {
           "id": "8",

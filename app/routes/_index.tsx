@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from '@remix-run/node'
 import { json } from '@remix-run/node'
 import { useLoaderData } from '@remix-run/react'
-import { Download, Upload } from 'lucide-react'
+import { ArrowUpDown, Download, SlidersHorizontal, Upload } from 'lucide-react'
 import type React from 'react'
 import { useRef, useState } from 'react'
 import { toast } from 'sonner'
@@ -12,11 +12,14 @@ import KeyboardShortcutsDialog from '~/components/KeyboardShortcutsDialog'
 import SearchBar from '~/components/SearchBar'
 import SubscriptionGrid from '~/components/SubscriptionGrid'
 import Summary from '~/components/Summary'
+import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select'
 import { useKeyboard } from '~/hooks/useKeyboard'
 import { getCacheHeaders, getCurrencyRates } from '~/services/currency.server'
 import useSubscriptionStore, { type Subscription } from '~/store/subscriptionStore'
 import type { SupportedCurrency } from '~/types/currencies'
+import { calculateNextPaymentDate } from '~/utils/nextPaymentDate'
 
 export const meta: MetaFunction = () => {
   return [{ title: 'Subs - Subscription Tracker' }, { name: 'description', content: 'Easily track your subscriptions' }]
@@ -37,7 +40,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function Index() {
-  const { rates, lastUpdated } = useLoaderData<typeof loader>()
+  const { rates } = useLoaderData<typeof loader>()
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingSubscription, setEditingSubscription] = useState<Subscription | null>(null)
   const [searchQuery, setSearchQuery] = useState('')
@@ -45,6 +48,8 @@ export default function Index() {
   const [subscriptionToDelete, setSubscriptionToDelete] = useState<Subscription | null>(null)
   const [isAddPopoverOpen, setIsAddPopoverOpen] = useState(false)
   const [isKeyboardShortcutsOpen, setIsKeyboardShortcutsOpen] = useState(false)
+  const [sortBy, setSortBy] = useState('name-asc')
+  const [billingCycleFilter, setBillingCycleFilter] = useState('all')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const searchBarRef = useRef<HTMLInputElement>(null)
 
@@ -151,18 +156,52 @@ export default function Index() {
     }
   }
 
-  const calculateTotals = () => {
-    return subscriptions.reduce((acc: { [key: string]: number }, sub) => {
-      acc[sub.currency] = (acc[sub.currency] || 0) + sub.price
-      return acc
-    }, {})
+  const getComparableNextPaymentTimestamp = (subscription: Subscription) => {
+    if (!subscription.billingCycle) {
+      return Number.MAX_SAFE_INTEGER
+    }
+
+    const calculatedDate = new Date(
+      calculateNextPaymentDate(subscription.billingCycle, subscription.nextPaymentDate) ?? Number.MAX_SAFE_INTEGER,
+    )
+
+    const timestamp = calculatedDate.getTime()
+    return Number.isNaN(timestamp) ? Number.MAX_SAFE_INTEGER : timestamp
   }
 
-  const filteredSubscriptions = subscriptions.filter(
-    (sub) =>
-      sub.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      sub.domain.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const filteredSubscriptions = subscriptions
+    .filter((sub) => {
+      const normalizedQuery = searchQuery.toLowerCase().trim()
+      const matchesSearch =
+        normalizedQuery.length === 0 ||
+        sub.name.toLowerCase().includes(normalizedQuery) ||
+        sub.domain.toLowerCase().includes(normalizedQuery)
+      const matchesBillingCycle = billingCycleFilter === 'all' || sub.billingCycle === billingCycleFilter
+
+      return matchesSearch && matchesBillingCycle
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case 'name-desc':
+          return b.name.localeCompare(a.name)
+        case 'price-asc':
+          return a.price - b.price
+        case 'price-desc':
+          return b.price - a.price
+        case 'next-payment':
+          return getComparableNextPaymentTimestamp(a) - getComparableNextPaymentTimestamp(b)
+        default:
+          return a.name.localeCompare(b.name)
+      }
+    })
+
+  const clearFilters = () => {
+    setSearchQuery('')
+    setSortBy('name-asc')
+    setBillingCycleFilter('all')
+  }
+
+  const cycleLabel = billingCycleFilter.charAt(0).toUpperCase() + billingCycleFilter.slice(1)
 
   // Keyboard shortcuts
   useKeyboard([
@@ -251,13 +290,54 @@ export default function Index() {
           </div>
         </div>
         <Summary totals={calculateTotalsInUSD()} />
-        <div className="mb-4">
-          <SearchBar ref={searchBarRef} onSearch={setSearchQuery} />
+        <div className="mb-3 grid grid-cols-1 lg:grid-cols-[1fr_auto_auto] gap-3">
+          <SearchBar query={searchQuery} ref={searchBarRef} onSearch={setSearchQuery} />
+          <Select value={sortBy} onValueChange={setSortBy}>
+            <SelectTrigger className="w-full lg:w-[220px]">
+              <ArrowUpDown className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Sort by" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="name-asc">Name (A-Z)</SelectItem>
+              <SelectItem value="name-desc">Name (Z-A)</SelectItem>
+              <SelectItem value="price-desc">Price (High to low)</SelectItem>
+              <SelectItem value="price-asc">Price (Low to high)</SelectItem>
+              <SelectItem value="next-payment">Next payment (Soonest)</SelectItem>
+            </SelectContent>
+          </Select>
+          <Select value={billingCycleFilter} onValueChange={setBillingCycleFilter}>
+            <SelectTrigger className="w-full lg:w-[220px]">
+              <SlidersHorizontal className="mr-2 h-4 w-4" />
+              <SelectValue placeholder="Billing cycle" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All billing cycles</SelectItem>
+              <SelectItem value="daily">Daily</SelectItem>
+              <SelectItem value="weekly">Weekly</SelectItem>
+              <SelectItem value="monthly">Monthly</SelectItem>
+              <SelectItem value="yearly">Yearly</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="mb-5 flex flex-wrap items-center gap-2">
+          <Badge variant="secondary">
+            Showing {filteredSubscriptions.length} of {subscriptions.length}
+          </Badge>
+          {searchQuery.trim().length > 0 && <Badge variant="outline">Search: {searchQuery}</Badge>}
+          {billingCycleFilter !== 'all' && <Badge variant="outline">Cycle: {cycleLabel}</Badge>}
+          {(searchQuery.trim().length > 0 || billingCycleFilter !== 'all' || sortBy !== 'name-asc') && (
+            <Button variant="ghost" size="sm" onClick={clearFilters}>
+              Reset view
+            </Button>
+          )}
         </div>
         <SubscriptionGrid
           subscriptions={filteredSubscriptions}
           onEditSubscription={handleEditSubscription}
           onDeleteSubscription={handleDeleteSubscription}
+          searchQuery={searchQuery}
+          onClearSearch={() => setSearchQuery('')}
+          onAddSubscription={() => setIsAddPopoverOpen(true)}
         />
       </main>
       <EditSubscriptionModal

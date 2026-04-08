@@ -22,6 +22,14 @@ const billingCycleLabel: Record<string, string> = {
   daily: 'Daily',
 }
 
+const getDaysUntil = (dateString: string): number => {
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const target = new Date(dateString)
+  target.setHours(0, 0, 0, 0)
+  return Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))
+}
+
 const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdit, onDelete, className }) => {
   const { id, name, price, currency, domain, icon, billingCycle, nextPaymentDate, showNextPayment } = subscription
 
@@ -60,6 +68,16 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
   }
 
   const nextPaymentDisplay = getNextPaymentDisplay()
+  const nextPaymentDateValue = billingCycle ? calculateNextPaymentDate(billingCycle, nextPaymentDate) : undefined
+  const daysUntilPayment = nextPaymentDateValue ? getDaysUntil(nextPaymentDateValue) : undefined
+  const relativeNextPaymentLabel =
+    daysUntilPayment === undefined
+      ? null
+      : daysUntilPayment === 0
+        ? 'today'
+        : daysUntilPayment === 1
+          ? 'tomorrow'
+          : `in ${daysUntilPayment} days`
 
   return (
     <motion.div
@@ -77,7 +95,7 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
         {/* Billing Cycle Badge - Top Left */}
         {billingCycle && (
           <Badge variant="secondary" className="absolute top-2 left-2 text-xs z-10">
-            per {billingCycleLabel[billingCycle] ?? billingCycle.charAt(0).toUpperCase() + billingCycle.slice(1)}
+            {billingCycleLabel[billingCycle] ?? billingCycle.charAt(0).toUpperCase() + billingCycle.slice(1)}
           </Badge>
         )}
 
@@ -85,12 +103,15 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
         {nextPaymentDisplay && (
           <div className="absolute bottom-2 left-2 flex items-center gap-1 text-xs text-muted-foreground z-10">
             <Calendar className="h-3 w-3 shrink-0" />
-            <span>Next: {nextPaymentDisplay}</span>
+            <span>
+              Next: {nextPaymentDisplay}
+              {relativeNextPaymentLabel ? ` (${relativeNextPaymentLabel})` : ''}
+            </span>
           </div>
         )}
 
         {/* Edit/Delete Buttons - Top Right */}
-        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 flex space-x-2 z-10">
+        <div className="absolute top-2 right-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-200 flex space-x-2 z-10">
           <Button variant="outline" size="icon" onClick={() => onEdit(id)} className="bg-background hover:bg-muted">
             <Edit className="h-4 w-4" />
             <span className="sr-only">Edit</span>
