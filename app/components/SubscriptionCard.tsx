@@ -1,10 +1,11 @@
 import { motion } from 'framer-motion'
-import { Calendar, Edit, Trash2 } from 'lucide-react'
+import { AlertTriangle, Calendar, Edit, Trash2 } from 'lucide-react'
 import type React from 'react'
 import { Badge } from '~/components/ui/badge'
 import { Button } from '~/components/ui/button'
 import { Card, CardContent } from '~/components/ui/card'
 import { LinkPreview } from '~/components/ui/link-preview'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '~/components/ui/tooltip'
 import type { Subscription } from '~/store/subscriptionStore'
 import { calculateNextPaymentDate } from '~/utils/nextPaymentDate'
 
@@ -31,7 +32,15 @@ const getDaysUntil = (dateString: string): number => {
 }
 
 const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdit, onDelete, className }) => {
-  const { id, name, price, currency, domain, icon, billingCycle, nextPaymentDate, showNextPayment } = subscription
+  const { id, name, price, currency, domain, icon, billingCycle, nextPaymentDate, showNextPayment, category } =
+    subscription
+
+  // Billing health warning: cycle set but no payment date shown
+  const hasBillingHealthWarning = billingCycle && !showNextPayment
+
+  // Check if next payment date is in the past (but not rolled forward)
+  const isDateInPast =
+    showNextPayment && nextPaymentDate ? new Date(nextPaymentDate) < new Date(new Date().setHours(0, 0, 0, 0)) : false
 
   // Sanitize the domain URL
   const sanitizeDomain = (domain: string) => {
@@ -92,10 +101,33 @@ const SubscriptionCard: React.FC<SubscriptionCardProps> = ({ subscription, onEdi
       >
         {/* Absolutely positioned overlays - do NOT affect card height */}
 
-        {/* Billing Cycle Badge - Top Left */}
+        {/* Billing Cycle Badge + optional health warning - Top Left */}
         {billingCycle && (
-          <Badge variant="secondary" className="absolute top-2 left-2 text-xs z-10">
-            {billingCycleLabel[billingCycle] ?? billingCycle.charAt(0).toUpperCase() + billingCycle.slice(1)}
+          <div className="absolute top-2 left-2 z-10 flex items-center gap-1">
+            <Badge variant="secondary" className="text-xs">
+              {billingCycleLabel[billingCycle] ?? billingCycle.charAt(0).toUpperCase() + billingCycle.slice(1)}
+            </Badge>
+            {(hasBillingHealthWarning || isDateInPast) && (
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <AlertTriangle className="h-3 w-3 text-yellow-500 shrink-0 cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {isDateInPast
+                      ? 'Next payment date is in the past'
+                      : 'Billing cycle set but next payment date is not shown'}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            )}
+          </div>
+        )}
+
+        {/* Category Badge - Bottom Right */}
+        {category && (
+          <Badge variant="outline" className="absolute bottom-2 right-2 text-xs z-10">
+            {category}
           </Badge>
         )}
 

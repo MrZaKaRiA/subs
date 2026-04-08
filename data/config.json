@@ -7,20 +7,14 @@
           "name": "Netflix",
           "price": 15.99,
           "currency": "USD",
-          "domain": "https://netflix.com",
-          "billingCycle": "weekly",
-          "nextPaymentDate": "2026-05-08",
-          "showNextPayment": false
+          "domain": "https://netflix.com"
         },
         {
           "id": "2",
           "name": "Spotify",
           "price": 9.99,
           "currency": "USD",
-          "domain": "https://spotify.com",
-          "billingCycle": "yearly",
-          "nextPaymentDate": "2027-04-08",
-          "showNextPayment": true
+          "domain": "https://spotify.com"
         },
         {
           "id": "3",
@@ -55,10 +49,7 @@
           "name": "Apple Music",
           "price": 9.99,
           "currency": "JPY",
-          "domain": "https://apple.com/apple-music",
-          "billingCycle": "monthly",
-          "nextPaymentDate": "2026-05-10",
-          "showNextPayment": true
+          "domain": "https://apple.com/apple-music"
         },
         {
           "id": "8",

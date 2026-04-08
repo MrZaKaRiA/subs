@@ -57,7 +57,11 @@ export function useKeyboard(bindings: KeyBinding[], enabled = true) {
 export function useKeyboardShortcuts() {
   return [
     { key: 'n', description: 'Add new subscription' },
+    { key: 'a', description: 'Focus Add Subscription form (first field)' },
     { key: '/', description: 'Focus search bar' },
+    { key: 's', description: 'Cycle sort order' },
+    { key: 'f', description: 'Cycle billing cycle filter' },
+    { key: 'c', description: 'Cycle category filter' },
     { key: 'e', description: 'Export subscriptions', ctrl: true },
     { key: 'i', description: 'Import subscriptions', ctrl: true },
     { key: '?', description: 'Show keyboard shortcuts' },

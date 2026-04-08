@@ -15,16 +15,39 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~
 import { Switch } from '~/components/ui/switch'
 import { cn } from '~/lib/utils'
 import type { loader } from '~/routes/_index'
-import type { BillingCycle, Subscription } from '~/store/subscriptionStore'
+import {
+  type BillingCycle,
+  SUBSCRIPTION_CATEGORIES,
+  type Subscription,
+  type SubscriptionTemplate,
+} from '~/store/subscriptionStore'
+import { usePreferencesStore } from '~/stores/preferences'
 import { initializeNextPaymentDate } from '~/utils/nextPaymentDate'
 import { IconUrlInput } from './IconFinder'
 import SubscriptionCard from './SubscriptionCard'
+
+function getCurrencySymbol(currency: string): string {
+  try {
+    return new Intl.NumberFormat('en', {
+      style: 'currency',
+      currency,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    })
+      .format(0)
+      .replace(/[\d,. ]/g, '')
+      .trim()
+  } catch {
+    return currency
+  }
+}
 
 interface EditSubscriptionModalProps {
   isOpen: boolean
   onClose: () => void
   onSave: (subscription: Omit<Subscription, 'id'>) => void
   editingSubscription: Subscription | null
+  templateValues?: SubscriptionTemplate | null
 }
 
 const subscriptionSchema = z.object({
@@ -36,6 +59,7 @@ const subscriptionSchema = z.object({
   billingCycle: z.enum(['monthly', 'yearly', 'weekly', 'daily']).optional(),
   nextPaymentDate: z.string().optional(),
   showNextPayment: z.boolean().optional(),
+  category: z.string().optional(),
 })
 
 const EditSubscriptionModal: React.FC<EditSubscriptionModalProps> = ({
@@ -43,8 +67,10 @@ const EditSubscriptionModal: React.FC<EditSubscriptionModalProps> = ({
   onClose,
   onSave,
   editingSubscription,
+  templateValues,
 }) => {
   const { rates } = useLoaderData<typeof loader>()
+  const { selectedCurrency } = usePreferencesStore()
   const [calendarOpen, setCalendarOpen] = useState(false)
 
   const {
@@ -65,12 +91,25 @@ const EditSubscriptionModal: React.FC<EditSubscriptionModalProps> = ({
       billingCycle: undefined as BillingCycle | undefined,
       nextPaymentDate: undefined as string | undefined,
       showNextPayment: false,
+      category: undefined as string | undefined,
     },
   })
 
   useEffect(() => {
     if (editingSubscription) {
       reset(editingSubscription)
+    } else if (templateValues) {
+      reset({
+        name: templateValues.name,
+        price: templateValues.price,
+        currency: templateValues.currency,
+        domain: templateValues.domain,
+        icon: '',
+        billingCycle: templateValues.billingCycle,
+        nextPaymentDate: undefined,
+        showNextPayment: false,
+        category: templateValues.category,
+      })
     } else {
       reset({
         name: '',
@@ -81,9 +120,10 @@ const EditSubscriptionModal: React.FC<EditSubscriptionModalProps> = ({
         billingCycle: undefined,
         nextPaymentDate: undefined,
         showNextPayment: false,
+        category: undefined,
       })
     }
-  }, [editingSubscription, reset])
+  }, [editingSubscription, templateValues, reset])
 
   const watchedFields = watch()
 
@@ -108,6 +148,7 @@ const EditSubscriptionModal: React.FC<EditSubscriptionModalProps> = ({
     billingCycle: watchedFields.billingCycle,
     nextPaymentDate: watchedFields.nextPaymentDate,
     showNextPayment: watchedFields.showNextPayment,
+    category: (watchedFields.category as Subscription['category']) ?? undefined,
   }
 
   const onSubmit = (data: Omit<Subscription, 'id'>) => {
@@ -159,13 +200,20 @@ const EditSubscriptionModal: React.FC<EditSubscriptionModalProps> = ({
                       name="price"
                       control={control}
                       render={({ field }) => (
-                        <Input
-                          id="price"
-                          type="number"
-                          {...field}
-                          onChange={(e) => field.onChange(Number.parseFloat(e.target.value))}
-                          className={errors.price ? 'border-red-500' : ''}
-                        />
+                        <div className="relative">
+                          <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground select-none">
+                            {getCurrencySymbol(watchedFields.currency || 'USD')}
+                          </span>
+                          <Input
+                            id="price"
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            {...field}
+                            onChange={(e) => field.onChange(Number.parseFloat(e.target.value))}
+                            className={cn('pl-7', errors.price ? 'border-red-500' : '')}
+                          />
+                        </div>
                       )}
                     />
                   </div>
@@ -191,6 +239,20 @@ const EditSubscriptionModal: React.FC<EditSubscriptionModalProps> = ({
                     />
                   </div>
                 </div>
+                {(watchedFields.price ?? 0) > 0 &&
+                  watchedFields.currency &&
+                  rates &&
+                  selectedCurrency &&
+                  selectedCurrency !== watchedFields.currency && (
+                    <p className="text-xs text-muted-foreground -mt-1 mb-1">
+                      ≈{' '}
+                      {(
+                        ((watchedFields.price ?? 0) * (rates[watchedFields.currency] ?? 1)) /
+                        (rates[selectedCurrency] ?? 1)
+                      ).toFixed(2)}{' '}
+                      {selectedCurrency}
+                    </p>
+                  )}
                 <p className="text-red-500 text-xs h-4">
                   {errors.price?.message || errors.currency?.message || '\u00A0'}
                 </p>
@@ -221,6 +283,28 @@ const EditSubscriptionModal: React.FC<EditSubscriptionModalProps> = ({
                         <SelectItem value="weekly">Weekly</SelectItem>
                         <SelectItem value="monthly">Monthly</SelectItem>
                         <SelectItem value="yearly">Yearly</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  )}
+                />
+                <p className="text-red-500 text-xs h-4">{'\u00A0'}</p>
+              </div>
+              <div>
+                <Label htmlFor="category">Category (optional)</Label>
+                <Controller
+                  name="category"
+                  control={control}
+                  render={({ field }) => (
+                    <Select onValueChange={field.onChange} value={field.value ?? ''}>
+                      <SelectTrigger id="category">
+                        <SelectValue placeholder="Select category" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SUBSCRIPTION_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat} value={cat}>
+                            {cat}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   )}
